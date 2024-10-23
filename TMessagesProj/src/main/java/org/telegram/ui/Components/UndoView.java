@@ -192,6 +192,8 @@ public class UndoView extends FrameLayout {
     public final static int ACTION_BOOSTING_AWAIT = 93;
     public final static int ACTION_BOOSTING_ONLY_RECIPIENT_CODE = 94;
 
+    public final static int ACTION_NOTIFY_SCHEDULE_STREAM = 110;
+
     private CharSequence infoText;
     private int hideAnimationType = 1;
     Drawable backgroundDrawable;
@@ -932,7 +934,8 @@ public class UndoView extends FrameLayout {
                 currentAction == ACTION_FWD_MESSAGES || currentAction == ACTION_NOTIFY_ON || currentAction == ACTION_NOTIFY_OFF ||  currentAction == ACTION_USERNAME_COPIED ||
                 currentAction == ACTION_HASHTAG_COPIED || currentAction == ACTION_TEXT_COPIED || currentAction == ACTION_LINK_COPIED || currentAction == ACTION_PHONE_COPIED ||
                 currentAction == ACTION_AUTO_DELETE_OFF || currentAction == ACTION_AUTO_DELETE_ON || currentAction == ACTION_GIGAGROUP_CANCEL || currentAction == ACTION_GIGAGROUP_SUCCESS ||
-                currentAction == ACTION_VOIP_INVITE_LINK_SENT || currentAction == ACTION_PIN_DIALOGS || currentAction == ACTION_UNPIN_DIALOGS || currentAction == ACTION_SHARE_BACKGROUND || currentAction == ACTION_EMAIL_COPIED) {
+                currentAction == ACTION_VOIP_INVITE_LINK_SENT || currentAction == ACTION_PIN_DIALOGS || currentAction == ACTION_UNPIN_DIALOGS || currentAction == ACTION_SHARE_BACKGROUND ||
+                currentAction == ACTION_EMAIL_COPIED || currentAction == ACTION_NOTIFY_SCHEDULE_STREAM) {
             undoImageView.setVisibility(GONE);
             leftImageView.setVisibility(VISIBLE);
 
@@ -1012,6 +1015,11 @@ public class UndoView extends FrameLayout {
                 infoTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
             } else if (currentAction == ACTION_NOTIFY_ON) {
                 infoTextView.setText(LocaleController.getString(R.string.ChannelNotifyMembersInfoOn));
+                leftImageView.setAnimation(R.raw.silent_unmute, 30, 30);
+                timeLeft = 3000;
+                infoTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+            } else if (currentAction == ACTION_NOTIFY_SCHEDULE_STREAM) {
+                infoTextView.setText(LocaleController.getString(R.string.NotifyScheduleStream));
                 leftImageView.setAnimation(R.raw.silent_unmute, 30, 30);
                 timeLeft = 3000;
                 infoTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);

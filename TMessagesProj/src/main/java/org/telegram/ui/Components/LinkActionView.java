@@ -59,6 +59,7 @@ public class LinkActionView extends LinearLayout {
     String link;
     BaseFragment fragment;
     ImageView optionsView;
+    ImageView qrBtn;
     private final TextView copyView;
     private final TextView shareView;
     private final TextView removeView;
@@ -96,10 +97,13 @@ public class LinkActionView extends LinearLayout {
         int containerPadding = 4;
         frameLayout.addView(linkView);
         optionsView = new ImageView(context);
-        optionsView.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_ab_other));
-        optionsView.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
-        optionsView.setScaleType(ImageView.ScaleType.CENTER);
-        frameLayout.addView(optionsView, LayoutHelper.createFrame(40, 48, Gravity.RIGHT | Gravity.CENTER_VERTICAL));
+        qrBtn = new ImageView(context);
+        qrBtn.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.msg_qrcode));
+        qrBtn.setContentDescription(LocaleController.getString(R.string.InviteByQRCode));
+        qrBtn.setScaleType(ImageView.ScaleType.CENTER);
+        qrBtn.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+
+        frameLayout.addView(qrBtn, LayoutHelper.createFrame(40, 48, Gravity.RIGHT | Gravity.CENTER_VERTICAL));
         addView(frameLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, containerPadding, 0, containerPadding, 0));
 
         LinearLayout linearLayout = new LinearLayout(context);
@@ -218,14 +222,15 @@ public class LinkActionView extends LinearLayout {
             fragment.showDialog(builder.create());
         });
 
-        optionsView.setOnClickListener(view -> {
-            if (actionBarPopupWindow != null) {
-                return;
-            }
-            ActionBarPopupWindow.ActionBarPopupWindowLayout layout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(context);
+        qrBtn.setOnClickListener(view -> {
+            showQrCode();
+//            if (actionBarPopupWindow != null) {
+//                return;
+//            }
+//            ActionBarPopupWindow.ActionBarPopupWindowLayout layout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(context);
 
-            ActionBarMenuSubItem subItem;
-            if (!this.permanent && canEdit) {
+//            ActionBarMenuSubItem subItem;
+            /*if (!this.permanent && canEdit) {
                 subItem = new ActionBarMenuSubItem(context, true, false);
                 subItem.setTextAndIcon(LocaleController.getString(R.string.Edit), R.drawable.msg_edit);
                 layout.addView(subItem, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48));
@@ -235,9 +240,9 @@ public class LinkActionView extends LinearLayout {
                     }
                     delegate.editLink();
                 });
-            }
+            }*/
 
-            subItem = new ActionBarMenuSubItem(context, true, false);
+            /*subItem = new ActionBarMenuSubItem(context, true, false);
             subItem.setTextAndIcon(LocaleController.getString(R.string.GetQRCode), R.drawable.msg_qrcode);
             layout.addView(subItem, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48));
             subItem.setOnClickListener(view12 -> {
@@ -255,17 +260,17 @@ public class LinkActionView extends LinearLayout {
                     revokeLink();
                 });
                 layout.addView(subItem, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48));
-            }
+            }*/
 
-            FrameLayout container;
+            /*FrameLayout container;
             if (bottomSheet == null) {
                 container = (FrameLayout) fragment.getParentLayout().getOverlayContainerView();
             } else {
                 container = bottomSheet.getContainer();
-            }
+            }*/
 
 
-            if (container != null) {
+            /*if (container != null) {
                 float x = 0;
                 float y;
                 getPointOnScreen(frameLayout, container, point);
@@ -339,7 +344,7 @@ public class LinkActionView extends LinearLayout {
                     x -= container.getPaddingLeft();
                 }
                 actionBarPopupWindow.showAtLocation(container, 0, (int) (container.getMeasuredWidth() - layout.getMeasuredWidth() - AndroidUtilities.dp(16) + container.getX() + x), (int) (y + frameLayout.getMeasuredHeight() + container.getY()));
-            }
+            }*/
 
         });
 
@@ -412,6 +417,7 @@ public class LinkActionView extends LinearLayout {
         frameLayout.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(8), Theme.getColor(Theme.key_graySection), ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_listSelector), (int) (255 * 0.3f))));
         linkView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         optionsView.setColorFilter(Theme.getColor(Theme.key_dialogTextGray3));
+        qrBtn.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         //optionsView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), 1));
         avatarsContainer.countTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         avatarsContainer.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(6), 0, ColorUtils.setAlphaComponent(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), (int) (255 * 0.3f))));

@@ -476,6 +476,8 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     private HintView voiceHintTextView;
     private HintView noSoundHintView;
     private HintView forwardHintView;
+    private HintView botStartHintView;
+    private TextView tv;
     private ChecksHintView checksHintView;
     private View emojiButtonRed;
     private BlurredFrameLayout pinnedMessageView;
@@ -3286,6 +3288,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         mediaBanTooltip = null;
         noSoundHintView = null;
         forwardHintView = null;
+        botStartHintView = null;
         checksHintView = null;
         textSelectionHint = null;
         emojiButtonRed = null;
@@ -12238,6 +12241,9 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         if (forwardHintView != null) {
             forwardHintView.hide();
         }
+        if (botStartHintView != null) {
+            botStartHintView.hide();
+        }
         if (pollHintView != null) {
             pollHintView.hide();
         }
@@ -12471,6 +12477,29 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             forwardHintView.setVisibility(View.INVISIBLE);
         }
         forwardHintView.showForMessageCell(cell, true);
+    }
+
+    private void showBotStartHint() {
+        if (getParentActivity() == null || fragmentView == null || /*chatActivityEnterView == null ||*/ isInPreviewMode()) {
+//            return;
+        }
+
+        if (botStartHintView == null) {
+            SizeNotifierFrameLayout frameLayout = (SizeNotifierFrameLayout) fragmentView;
+            int index = frameLayout.indexOfChild(chatActivityEnterView);
+            if (index == -1) {
+                return;
+            }
+            botStartHintView = new HintView(getParentActivity(), 1, themeDelegate);
+            frameLayout.addView(botStartHintView, index + 1, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP, 10, 0, 10, 0));
+            botStartHintView.setText(LocaleController.getString(R.string.StartBotHint));
+            tv = new TextView(getParentActivity());
+            tv.setText(LocaleController.getString(R.string.StarsReactionTop));
+            tv.setVisibility(View.INVISIBLE);
+            frameLayout.addView(tv, index + 1, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER, 0, 0, 0, 50));
+        }
+
+       botStartHintView.showForView(tv, true);
     }
 
     private void showTextSelectionHint(MessageObject messageObject) {
@@ -25206,6 +25235,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
 //                bottomOverlayStartButton.setText(LocaleController.getString(R.string.BotStart));
                 if (bottomOverlayStartButton != null) {
                     bottomOverlayStartButton.setVisibility(View.VISIBLE);
+                    showBotStartHint();
                 }
                 bottomOverlayChatText.setVisibility(View.GONE);
                 chatActivityEnterView.hidePopup(false);

@@ -16,6 +16,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -26,6 +27,8 @@ import android.graphics.PorterDuffColorFilter;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -131,8 +134,12 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
     private ImageView silentButtonImage;
     private FragmentContextView additionalContextView;
     private TextView joinButton;
+    private TextView notifyMeButton;
     private int joinButtonWidth;
     private CellFlickerDrawable joinButtonFlicker;
+    private CellFlickerDrawable notifyMeButtonFlicker;
+
+    private UndoView undoView;
 
     private boolean isMuted;
 
@@ -469,6 +476,99 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
         if (flickOnAttach) {
             startJoinFlickerAnimation();
         }
+
+        undoView = new UndoView(getContext());
+
+        if (fragment instanceof ChatActivity) {
+            ChatActivity parent = (ChatActivity) fragment;
+            parent.contentView.addView(undoView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.LEFT, 8, 0, 8, 56));
+        }
+
+
+        notifyMeButtonFlicker = new CellFlickerDrawable();
+        notifyMeButtonFlicker.setProgress(1);
+        notifyMeButtonFlicker.repeatEnabled = false;
+        notifyMeButton = new TextView(context) {
+            @Override
+            public void draw(Canvas canvas) {
+                super.draw(canvas);
+
+                /*LinearGradient lg = new LinearGradient(0, 0, getWidth() * 1.7f, 0, new int[]{0xff648CF4, 0xff8C69CF, 0xffD45979, 0xffD45979}, new float[]{0.0f, 0.294f, 0.588f, 1.0f}, Shader.TileMode.CLAMP);
+                Paint nmPaint = new Paint(gradientPaint);
+                nmPaint.setShader(lg);*/
+
+                final int halfOutlineWidth = AndroidUtilities.dp(1);
+                AndroidUtilities.rectTmp.set(halfOutlineWidth, halfOutlineWidth, getWidth() - halfOutlineWidth, getHeight() - halfOutlineWidth);
+//                canvas.drawRoundRect(AndroidUtilities.rectTmp, AndroidUtilities.dp(16), AndroidUtilities.dp(16), nmPaint);
+                notifyMeButtonFlicker.draw(canvas, AndroidUtilities.rectTmp, AndroidUtilities.dp(16), this);
+            }
+
+            @Override
+            protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+                super.onSizeChanged(w, h, oldw, oldh);
+
+                notifyMeButtonFlicker.setParentWidth(getWidth());
+            }
+
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+                updateJoinButtonWidth(getMeasuredWidth());
+            }
+
+            @Override
+            public void setVisibility(int visibility) {
+                super.setVisibility(visibility);
+                if (visibility != View.VISIBLE) {
+                    updateJoinButtonWidth(0);
+                    joinButtonWidth = 0;
+                }
+            }
+
+            private void updateJoinButtonWidth(int width) {
+                if (joinButtonWidth != width) {
+                    titleTextView.setPadding(
+                            titleTextView.getPaddingLeft(),
+                            titleTextView.getPaddingTop(),
+                            titleTextView.getPaddingRight() - joinButtonWidth + width,
+                            titleTextView.getPaddingBottom()
+                    );
+                    joinButtonWidth = width;
+                }
+            }
+        };
+        notifyMeButton.setText(LocaleController.getString(R.string.NotifyMe));
+        notifyMeButton.setTextColor(getThemedColor(Theme.key_featuredStickers_buttonText));
+        notifyMeButton.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(16), getThemedColor(Theme.key_featuredStickers_addButton), getThemedColor(Theme.key_featuredStickers_addButtonPressed)));
+        notifyMeButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        notifyMeButton.setTypeface(AndroidUtilities.bold());
+        notifyMeButton.setGravity(Gravity.CENTER);
+        notifyMeButton.setPadding(AndroidUtilities.dp(14), 0, AndroidUtilities.dp(14), 0);
+        addView(notifyMeButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 28, Gravity.TOP | Gravity.RIGHT, 0, 10, 14, 0));
+        notifyMeButton.setOnClickListener(v -> {
+            undoView.showWithAction(0, UndoView.ACTION_NOTIFY_SCHEDULE_STREAM, null);
+            notifyMeButton.setVisibility(View.GONE);
+            updateScheduleTimeRunnable.run();
+
+            ChatObject.Call call = chatActivity.getGroupCall();
+            AccountInstance accountInstance = AccountInstance.getInstance(UserConfig.selectedAccount);
+            TLRPC.TL_phone_toggleGroupCallStartSubscription req = new TLRPC.TL_phone_toggleGroupCallStartSubscription();
+            req.call = call.getInputGroupCall();
+            call.call.schedule_start_subscribed = true;
+            req.subscribed = call.call.schedule_start_subscribed;
+            accountInstance.getConnectionsManager().sendRequest(req, (response, error) -> {
+                if (response != null) {
+                    accountInstance.getMessagesController().processUpdates((TLRPC.Updates) response, false);
+                }
+            });
+        });
+        if (flickOnAttach) {
+            startNotifyMeFlickerAnimation();
+        }
+
+        ChatObject.Call _call = chatActivity.getGroupCall();
+        if (_call.call.schedule_start_subscribed)
+            notifyMeButton.setVisibility(View.GONE);
 
         silentButton = new FrameLayout(context);
         silentButtonImage = new ImageView(context);
@@ -1076,6 +1176,7 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
             titleTextView.setTag(Theme.key_inappPlayerTitle);
             subtitleTextView.setVisibility(GONE);
             joinButton.setVisibility(GONE);
+            notifyMeButton.setVisibility(GONE);
             closeButton.setVisibility(GONE);
             playButton.setVisibility(GONE);
             muteButton.setVisibility(GONE);
@@ -1095,6 +1196,7 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
 
             subtitleTextView.setVisibility(GONE);
             joinButton.setVisibility(GONE);
+            notifyMeButton.setVisibility(GONE);
             closeButton.setVisibility(VISIBLE);
             playButton.setVisibility(VISIBLE);
             muteButton.setVisibility(GONE);
@@ -1213,6 +1315,7 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
             playButton.setVisibility(GONE);
             subtitleTextView.setVisibility(GONE);
             joinButton.setVisibility(GONE);
+            notifyMeButton.setVisibility(GONE);
 
             titleTextView.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 0, 0, 0, 2));
             titleTextView.setPadding(AndroidUtilities.dp(112), 0, AndroidUtilities.dp(112) + joinButtonWidth, 0);
@@ -1321,7 +1424,8 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
                 muteButton.invalidate();
             }
         } else if (currentStyle == STYLE_INACTIVE_GROUP_CALL) {
-            if (!scheduleRunnableScheduled) {
+            ChatObject.Call call = chatActivity.getGroupCall();
+            if (!scheduleRunnableScheduled && call.call.schedule_start_subscribed) {
                 scheduleRunnableScheduled = true;
                 updateScheduleTimeRunnable.run();
             }
@@ -2114,7 +2218,7 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
                         }
                     }
                     subtitleTextView.setText(LocaleController.formatStartsTime(call.call.schedule_date, 4), false);
-                    if (!scheduleRunnableScheduled) {
+                    if (!scheduleRunnableScheduled && call.call.schedule_start_subscribed) {
                         scheduleRunnableScheduled = true;
                         updateScheduleTimeRunnable.run();
                     }
@@ -2205,6 +2309,18 @@ public class FragmentContextView extends FrameLayout implements NotificationCent
             AndroidUtilities.runOnUIThread(() -> {
                 joinButtonFlicker.setProgress(0);
                 joinButton.invalidate();
+            }, 150);
+        } else {
+            flickOnAttach = true;
+        }
+    }
+
+    private void startNotifyMeFlickerAnimation() {
+        if (notifyMeButtonFlicker != null && notifyMeButtonFlicker.getProgress() >= 1) {
+            flickOnAttach = false;
+            AndroidUtilities.runOnUIThread(() -> {
+                notifyMeButtonFlicker.setProgress(0);
+                notifyMeButton.invalidate();
             }, 150);
         } else {
             flickOnAttach = true;

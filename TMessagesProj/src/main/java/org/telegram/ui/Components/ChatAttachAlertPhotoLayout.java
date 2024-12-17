@@ -53,6 +53,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewPropertyAnimator;
+import android.view.ViewTreeObserver;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.DecelerateInterpolator;
@@ -104,6 +105,7 @@ import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.PhotoViewer;
 import org.telegram.ui.Stars.StarsIntroActivity;
 import org.telegram.ui.Stories.recorder.AlbumButton;
+import org.telegram.ui.Stories.recorder.StoryRecorder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -1264,6 +1266,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     shutterButton.setState(ShutterButton.State.DEFAULT, true);
                     return;
                 }
+                // todo(photo): check for this in StoryRecorder
                 if (!photoEnabled) {
                     BulletinFactory.of(cameraView, resourcesProvider).createErrorBulletin(LocaleController.getString(R.string.GlobalAttachPhotoRestricted)).show();
                     return;
@@ -1925,7 +1928,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         AndroidUtilities.unlockOrientation(AndroidUtilities.findActivity(getContext()));
     }
 
-    protected void openPhotoViewer(MediaController.PhotoEntry entry, final boolean sameTakePictureOrientation, boolean external) {
+    public void openPhotoViewer(MediaController.PhotoEntry entry, final boolean sameTakePictureOrientation, boolean external) {
         if (entry != null) {
             cameraPhotos.add(entry);
             selectedPhotos.put(entry.imageId, entry);
@@ -1997,7 +2000,10 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
             @Override
             public void onClose() {
-                resumeCameraPreview();
+                // resumeCameraPreview();
+                if (storyRecorder != null && storyRecorder.isVisible()) {
+                    storyRecorder.onReturnFromPhotoViewer();
+                }
             }
 
             public void onEditModeChanged(boolean isEditMode) {
@@ -2089,6 +2095,9 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 adapter.notifyDataSetChanged();
                 cameraAttachAdapter.notifyDataSetChanged();
                 parentAlert.dismiss(true);
+                AndroidUtilities.runOnUIThread(() -> {
+                    storyRecorder.close(false);
+                }, 125);
             }
 
             @Override
@@ -2289,6 +2298,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         }
     }
 
+    StoryRecorder storyRecorder;
     boolean cameraExpanded;
     private void openCamera(boolean animated) {
         if (cameraView == null || cameraInitAnimation != null || parentAlert.isDismissed()) {
@@ -2310,22 +2320,22 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (parentAlert.getCommentView().isKeyboardVisible() && isFocusable()) {
             parentAlert.getCommentView().closeKeyboard();
         }
-        zoomControlView.setVisibility(View.VISIBLE);
-        zoomControlView.setAlpha(0.0f);
-        cameraPanel.setVisibility(View.VISIBLE);
-        cameraPanel.setTag(null);
-        animateCameraValues[0] = 0;
-        animateCameraValues[1] = itemSize;
-        animateCameraValues[2] = itemSize;
-        additionCloseCameraY = 0;
-        cameraExpanded = true;
-        if (cameraView != null) {
+//        zoomControlView.setVisibility(View.VISIBLE);
+//        zoomControlView.setAlpha(0.0f);
+//        cameraPanel.setVisibility(View.VISIBLE);
+//        cameraPanel.setTag(null);
+//        animateCameraValues[0] = 0;
+//        animateCameraValues[1] = itemSize;
+//        animateCameraValues[2] = itemSize;
+//        additionCloseCameraY = 0;
+//        cameraExpanded = true;
+        /*if (cameraView != null) {
             cameraView.setFpsLimit(-1);
-        }
+        }*/
         AndroidUtilities.hideKeyboard(this);
         AndroidUtilities.setLightNavigationBar(parentAlert.getWindow(), false);
-        parentAlert.getWindow().addFlags(FLAG_KEEP_SCREEN_ON);
-        if (animated) {
+//        parentAlert.getWindow().addFlags(FLAG_KEEP_SCREEN_ON);
+        /*if (animated) {
             setCameraOpenProgress(0);
             cameraAnimationInProgress = true;
             notificationsLocker.lock();
@@ -2380,18 +2390,30 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
             if (cameraView != null && Build.VERSION.SDK_INT >= 21) {
                 cameraView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_FULLSCREEN);
             }
-        }
-        cameraOpened = true;
-        if (cameraView != null) {
+        }*/
+//        cameraOpened = true;
+        /*if (cameraView != null) {
             cameraView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        }
-        if (Build.VERSION.SDK_INT >= 19) {
+        }*/
+        /*if (Build.VERSION.SDK_INT >= 19) {
             gridView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
-        }
+        }*/
 
-        if (!LiteMode.isEnabled(LiteMode.FLAGS_CHAT) && cameraView != null && cameraView.isInited()) {
+        /*if (!LiteMode.isEnabled(LiteMode.FLAGS_CHAT) && cameraView != null && cameraView.isInited()) {
             cameraView.showTexture(true, animated);
-        }
+        }*/
+        hideCamera(false);
+        storyRecorder = StoryRecorder.getInstance(parentAlert.baseFragment.getParentActivity(), UserConfig.selectedAccount);
+        storyRecorder.setOnCloseListener(new Runnable() {
+            @Override
+            public void run() {
+                AndroidUtilities.runOnUIThread(() -> {
+                    showCamera();
+                }, 125);
+            }
+        });
+        storyRecorder.getRecordControl().setIsFromCameraCell(true);
+        storyRecorder.open(StoryRecorder.SourceView.fromCameraCell(cameraCell, this), true);
     }
 
     public void loadGalleryPhotos() {
@@ -3529,7 +3551,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
 
     @Override
     public void onResume() {
-        if (parentAlert.isShowing() && !parentAlert.isDismissed() && !PhotoViewer.getInstance().isVisible()) {
+        if (parentAlert.isShowing() && !parentAlert.isDismissed() && !PhotoViewer.getInstance().isVisible() && !storyRecorder.isVisible()) {
             checkCamera(false);
         }
     }

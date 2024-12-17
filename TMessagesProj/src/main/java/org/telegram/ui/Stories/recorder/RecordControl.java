@@ -442,6 +442,8 @@ public class RecordControl extends View implements FlashViews.Invertable {
         outlineFilledPaint.setAlpha((int) (0xFF * Math.max(.7f * recordingLoading, 1f - recordEndT)));
 
         if (recordingLoading <= 0) {
+            if (isFromCameraCell)
+                sweepAngle %= 360;
             canvas.drawArc(AndroidUtilities.rectTmp, -90, sweepAngle, false, outlineFilledPaint);
         } else {
             final long now = SystemClock.elapsedRealtime();
@@ -466,7 +468,7 @@ public class RecordControl extends View implements FlashViews.Invertable {
             if (duration / 1000L != lastDuration / 1000L) {
                 delegate.onVideoDuration(duration / 1000L);
             }
-            if (duration >= MAX_DURATION) {
+            if (!isFromCameraCell && duration >= MAX_DURATION) {
                 post(() -> {
                     recording = false;
                     longpressRecording = false;
@@ -824,5 +826,10 @@ public class RecordControl extends View implements FlashViews.Invertable {
             this.recordingLoadingT.set(false, true);
         }
         invalidate();
+    }
+
+    private boolean isFromCameraCell;
+    public void setIsFromCameraCell(boolean isIt) {
+        isFromCameraCell = isIt;
     }
 }

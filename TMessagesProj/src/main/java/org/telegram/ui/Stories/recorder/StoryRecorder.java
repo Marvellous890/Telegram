@@ -115,12 +115,14 @@ import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.AvatarSpan;
 import org.telegram.ui.Cells.ChatMessageCell;
+import org.telegram.ui.Cells.PhotoAttachCameraCell;
 import org.telegram.ui.Cells.ShareDialogCell;
 import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.BlurringShader;
 import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.BulletinFactory;
+import org.telegram.ui.Components.ChatAttachAlertPhotoLayout;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EmojiView;
@@ -364,6 +366,36 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
             return src;
         }
 
+        public static SourceView fromCameraCell(PhotoAttachCameraCell cell,  ChatAttachAlertPhotoLayout layout) {
+            if (cell == null) {
+                return null;
+            }
+
+            isFromCameraCell = true;
+            chatAttachAlertPhotoLayout = layout;
+
+            SourceView src = new SourceView() {
+                @Override
+                protected void show(boolean sent) {
+                    cell.setVisibility(View.VISIBLE);
+                }
+
+                @Override
+                protected void hide() {
+                    cell.post(() -> {
+                        cell.setVisibility(View.GONE);
+                    });
+                }
+            };
+
+            int[] loc = new int[2];
+            final View imageView = cell.getChildAt(0);
+            imageView.getLocationOnScreen(loc);
+            src.screenRect.set(loc[0], loc[1], loc[0] + imageView.getWidth(), loc[1] + imageView.getHeight());
+            src.backgroundDrawable = cell.getDrawable();
+            return src;
+        }
+
         public static SourceView fromShareCell(ShareDialogCell shareDialogCell) {
             if (shareDialogCell == null) {
                 return null;
@@ -438,6 +470,9 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
             return src;
         }
     }
+
+    private static boolean isFromCameraCell = false;
+    private static ChatAttachAlertPhotoLayout chatAttachAlertPhotoLayout;
 
     public StoryRecorder whenSent(Runnable listener) {
         closeListener = listener;
@@ -993,6 +1028,8 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
         if (collageLayoutView != null) {
             collageLayoutView.clear(true);
         }
+        isFromCameraCell = false;
+        recordControl.setIsFromCameraCell(false);
     }
 
     private Runnable onCloseListener;
@@ -3355,7 +3392,15 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
                 modeSwitcherView.switchMode(isVideo);
             }
             StoryPrivacySelector.applySaved(currentAccount, outputEntry);
-            navigateTo(PAGE_PREVIEW, true);
+
+            if (isFromCameraCell) {
+                if (isVideo) {}
+                else {
+                    outputFile = StoryEntry.makeCacheFile(currentAccount, false);
+                    outputEntry.buildPhoto(outputFile);
+                    navigateCameraLayout(-1);
+                }
+            } else navigateTo(PAGE_PREVIEW, true);
         }
 
         private void takePicture(Utilities.Callback<Runnable> done) {
@@ -3410,7 +3455,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
                         entry.botLang = botLang;
                     }
                     if (collageLayoutView.hasLayout()) {
-                        outputFile = null;
+                        if (!isFromCameraCell) outputFile = null;
                         if (collageLayoutView.push(entry)) {
                             outputEntry = StoryEntry.asCollage(collageLayoutView.getLayout(), collageLayoutView.getContent());
                             StoryPrivacySelector.applySaved(currentAccount, outputEntry);
@@ -3427,16 +3472,24 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
                         } else if (done != null) {
                             done.run(null);
                         }
-                        updateActionBarButtons(true);
+
+                        if (isFromCameraCell) {
+                            outputEntry.buildPhoto(outputFile);
+                            navigateCameraLayout(orientation);
+                        } else updateActionBarButtons(true);
                     } else {
                         outputEntry = entry;
                         StoryPrivacySelector.applySaved(currentAccount, outputEntry);
                         fromGallery = false;
 
                         if (done != null) {
-                            done.run(() -> navigateTo(PAGE_PREVIEW, true));
+                            done.run(() -> {
+                                if (isFromCameraCell) navigateCameraLayout(orientation);
+                                else navigateTo(PAGE_PREVIEW, true);
+                            });
                         } else {
-                            navigateTo(PAGE_PREVIEW, true);
+                            if (isFromCameraCell) navigateCameraLayout(orientation);
+                            else navigateTo(PAGE_PREVIEW, true);
                         }
                     }
                 });
@@ -3469,12 +3522,42 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
                     fromGallery = false;
 
                     if (done != null) {
-                        done.run(() -> navigateTo(PAGE_PREVIEW, true));
+                        done.run(() -> {
+                            if (isFromCameraCell) navigateCameraLayout(-1);
+                            else navigateTo(PAGE_PREVIEW, true);
+                        });
                     } else {
-                        navigateTo(PAGE_PREVIEW, true);
+                        if (isFromCameraCell) navigateCameraLayout(-1);
+                        else navigateTo(PAGE_PREVIEW, true);
                     }
                 }
             }
+        }
+
+        private void navigateCameraLayoutFromVideo(int width, int height, String thumbPath, long duration) {
+            MediaController.PhotoEntry photoEntry = new MediaController.PhotoEntry(0, chatAttachAlertPhotoLayout.lastImageId--, 0, outputFile.getAbsolutePath(), 0, true, width, height, 0);
+            photoEntry.duration = (int) (duration / 1000f);
+            photoEntry.thumbPath = thumbPath;
+            chatAttachAlertPhotoLayout.openPhotoViewer(photoEntry, false, false);
+            destroyCameraView(false);
+            collageLayoutView.clear(false);
+            videoTimerView.setDuration(0, true);
+        }
+
+        private void navigateCameraLayout(Integer orientation) {
+            int width = 0, height = 0;
+            try {
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inJustDecodeBounds = true;
+                BitmapFactory.decodeFile(new File(outputFile.getAbsolutePath()).getAbsolutePath(), options);
+                width = options.outWidth;
+                height = options.outHeight;
+            } catch (Exception ignore) {}
+            MediaController.PhotoEntry photoEntry = new MediaController.PhotoEntry(0, chatAttachAlertPhotoLayout.lastImageId--, 0, outputFile.getAbsolutePath(), orientation == -1 ? 0 : orientation, false, width, height, 0);
+            photoEntry.canDeleteAfter = true;
+            chatAttachAlertPhotoLayout.openPhotoViewer(photoEntry, cameraView.getCameraSession().isSameTakePictureOrientation(), true);
+            destroyCameraView(false);
+            collageLayoutView.clear(false);
         }
 
         @Override
@@ -3586,9 +3669,13 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
                         outputEntry.height = height;
                         outputEntry.setupMatrix();
                     }
-                    navigateToPreviewWithPlayerAwait(() -> {
-                        navigateTo(PAGE_PREVIEW, true);
-                    }, 0);
+                    if (isFromCameraCell) {
+                        navigateCameraLayoutFromVideo(width, height, thumbPath, duration);
+                    } else {
+                        navigateToPreviewWithPlayerAwait(() -> {
+                            navigateTo(PAGE_PREVIEW, true);
+                        }, 0);
+                    }
                 }
             }, () /* onVideoStart */ -> {
                 whenStarted.run();
@@ -6879,5 +6966,13 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
         backButton.setTranslationX(left); left += dp(46) * backButton.getAlpha();
 
         collageListView.setBounds(left + dp(8), right + dp(8));
+    }
+
+    public RecordControl getRecordControl() {
+        return recordControl;
+    }
+
+    public void onReturnFromPhotoViewer() {
+        createCameraView();
     }
 }

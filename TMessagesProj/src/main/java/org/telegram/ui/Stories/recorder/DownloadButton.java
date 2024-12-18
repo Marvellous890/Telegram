@@ -174,11 +174,22 @@ public class DownloadButton extends ImageView {
             });
             container.addView(toast);
 
-            final File file = AndroidUtilities.generateVideoPath();
+            final File file;
+            if (isFromCameraCell) file = outputFile;
+            else file = AndroidUtilities.generateVideoPath();
+
             buildingVideo = new BuildingVideo(currentAccount, currentEntry, file, () -> {
                 if (!downloading || currentEntry == null) {
                     return;
                 }
+
+                if (isFromCameraCell) {
+                    downloading = false;
+                    toast.hide();
+                    storyRecorder.onFinishBuildVideo();
+                    return;
+                }
+
                 MediaController.saveFile(file.getAbsolutePath(), getContext(), 1, null, null, uri -> {
                     if (!downloading || currentEntry == null) {
                         return;
@@ -615,5 +626,21 @@ public class DownloadButton extends ImageView {
             }
             return super.onTouchEvent(event);
         }
+    }
+
+    private boolean isFromCameraCell;
+    private File outputFile;
+    private StoryRecorder storyRecorder;
+
+    public void setFromCameraParams(StoryRecorder s, File f) {
+        isFromCameraCell = true;
+        outputFile = f;
+        storyRecorder = s;
+    }
+
+    public void clearFromCameraParams() {
+        isFromCameraCell = false;
+        outputFile = null;
+        storyRecorder = null;
     }
 }

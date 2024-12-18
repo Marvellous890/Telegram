@@ -1030,6 +1030,7 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
         }
         isFromCameraCell = false;
         recordControl.setIsFromCameraCell(false);
+        downloadButton.clearFromCameraParams();
     }
 
     private Runnable onCloseListener;
@@ -3394,7 +3395,12 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
             StoryPrivacySelector.applySaved(currentAccount, outputEntry);
 
             if (isFromCameraCell) {
-                if (isVideo) {}
+                if (isVideo) {
+                    outputFile = StoryEntry.makeCacheFile(currentAccount, true);
+                    downloadButton.setEntry(outputEntry);
+                    downloadButton.setFromCameraParams(StoryRecorder.this, outputFile);
+                    downloadButton.callOnClick();
+                }
                 else {
                     outputFile = StoryEntry.makeCacheFile(currentAccount, false);
                     outputEntry.buildPhoto(outputFile);
@@ -3532,32 +3538,6 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
                     }
                 }
             }
-        }
-
-        private void navigateCameraLayoutFromVideo(int width, int height, String thumbPath, long duration) {
-            MediaController.PhotoEntry photoEntry = new MediaController.PhotoEntry(0, chatAttachAlertPhotoLayout.lastImageId--, 0, outputFile.getAbsolutePath(), 0, true, width, height, 0);
-            photoEntry.duration = (int) (duration / 1000f);
-            photoEntry.thumbPath = thumbPath;
-            chatAttachAlertPhotoLayout.openPhotoViewer(photoEntry, false, false);
-            destroyCameraView(false);
-            collageLayoutView.clear(false);
-            videoTimerView.setDuration(0, true);
-        }
-
-        private void navigateCameraLayout(Integer orientation) {
-            int width = 0, height = 0;
-            try {
-                BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inJustDecodeBounds = true;
-                BitmapFactory.decodeFile(new File(outputFile.getAbsolutePath()).getAbsolutePath(), options);
-                width = options.outWidth;
-                height = options.outHeight;
-            } catch (Exception ignore) {}
-            MediaController.PhotoEntry photoEntry = new MediaController.PhotoEntry(0, chatAttachAlertPhotoLayout.lastImageId--, 0, outputFile.getAbsolutePath(), orientation == -1 ? 0 : orientation, false, width, height, 0);
-            photoEntry.canDeleteAfter = true;
-            chatAttachAlertPhotoLayout.openPhotoViewer(photoEntry, cameraView.getCameraSession().isSameTakePictureOrientation(), true);
-            destroyCameraView(false);
-            collageLayoutView.clear(false);
         }
 
         @Override
@@ -3776,6 +3756,33 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
             showZoomControls(false, true);
         }
     };
+
+    private void navigateCameraLayoutFromVideo(int width, int height, String thumbPath, long duration) {
+        MediaController.PhotoEntry photoEntry = new MediaController.PhotoEntry(0, chatAttachAlertPhotoLayout.lastImageId--, 0, outputFile.getAbsolutePath(), 0, true, width, height, 0);
+        photoEntry.duration = (int) (duration / 1000f);
+        photoEntry.thumbPath = thumbPath;
+        wasSend = true;
+        chatAttachAlertPhotoLayout.openPhotoViewer(photoEntry, false, false);
+        destroyCameraView(false);
+        collageLayoutView.clear(true);
+        videoTimerView.setDuration(0, true);
+    }
+
+    private void navigateCameraLayout(Integer orientation) {
+        int width = 0, height = 0;
+        try {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(new File(outputFile.getAbsolutePath()).getAbsolutePath(), options);
+            width = options.outWidth;
+            height = options.outHeight;
+        } catch (Exception ignore) {}
+        MediaController.PhotoEntry photoEntry = new MediaController.PhotoEntry(0, chatAttachAlertPhotoLayout.lastImageId--, 0, outputFile.getAbsolutePath(), orientation == -1 ? 0 : orientation, false, width, height, 0);
+        photoEntry.canDeleteAfter = true;
+        chatAttachAlertPhotoLayout.openPhotoViewer(photoEntry, cameraView.getCameraSession().isSameTakePictureOrientation(), true);
+        destroyCameraView(false);
+        collageLayoutView.clear(true);
+    }
 
     private void setAwakeLock(boolean lock) {
         if (lock) {
@@ -6974,5 +6981,9 @@ public class StoryRecorder implements NotificationCenter.NotificationCenterDeleg
 
     public void onReturnFromPhotoViewer() {
         createCameraView();
+    }
+
+    public void onFinishBuildVideo() {
+        navigateCameraLayoutFromVideo(cameraView.getVideoWidth(), cameraView.getVideoHeight(), outputEntry.thumbPath, outputEntry.duration);
     }
 }

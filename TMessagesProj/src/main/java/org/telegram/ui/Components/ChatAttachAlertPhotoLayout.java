@@ -1145,13 +1145,13 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         counterTextView.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.photos_arrow, 0);
         counterTextView.setCompoundDrawablePadding(dp(4));
         counterTextView.setPadding(dp(16), 0, dp(16), 0);
-        container.addView(counterTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 38, Gravity.LEFT | Gravity.TOP, 0, 0, 0, 100 + 16));
+        // container.addView(counterTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 38, Gravity.LEFT | Gravity.TOP, 0, 0, 0, 100 + 16));
         counterTextView.setOnClickListener(v -> {
             if (cameraView == null) {
                 return;
             }
             openPhotoViewer(null, false, false);
-            CameraController.getInstance().stopPreview(cameraView.getCameraSessionObject());
+            // CameraController.getInstance().stopPreview(cameraView.getCameraSessionObject());
         });
 
         zoomControlView = new ZoomControlView(context);
@@ -1412,7 +1412,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         cameraPhotoRecyclerView.setOverScrollMode(RecyclerListView.OVER_SCROLL_NEVER);
         cameraPhotoRecyclerView.setVisibility(View.INVISIBLE);
         cameraPhotoRecyclerView.setAlpha(0.0f);
-        container.addView(cameraPhotoRecyclerView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 80));
+        // container.addView(cameraPhotoRecyclerView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 80));
         cameraPhotoLayoutManager = new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false) {
             @Override
             public boolean supportsPredictiveItemAnimations() {
@@ -1943,7 +1943,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                 zoomControlView.setZoom(0.0f, false);
                 cameraZoom = 0.0f;
                 cameraView.setZoom(0.0f);
-                CameraController.getInstance().startPreview(cameraView.getCameraSessionObject());
+                // CameraController.getInstance().startPreview(cameraView.getCameraSessionObject());
             }
             return;
         }
@@ -2026,7 +2026,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     zoomControlView.setZoom(0.0f, false);
                     cameraZoom = 0.0f;
                     cameraView.setZoom(0.0f);
-                    CameraController.getInstance().startPreview(cameraView.getCameraSession());
+                    if (!storyRecorder.isVisible()) CameraController.getInstance().startPreview(cameraView.getCameraSession());
                 }
                 if (cancelTakingPhotos && cameraPhotos.size() == 1) {
                     for (int a = 0, size = cameraPhotos.size(); a < size; a++) {
@@ -2058,13 +2058,16 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
                     parentAlert.delegate.didPressedButton(0, true, true, 0, 0, parentAlert.isCaptionAbove(), false);
                     return;
                 }
-                if (!cameraOpened) {
+
+                storyRecorder.activateSelectMore(cameraPhotoRecyclerView, counterTextView);
+
+                /*if (!cameraOpened) {
                     openCamera(false);
-                }
-                counterTextView.setVisibility(View.VISIBLE);
-                cameraPhotoRecyclerView.setVisibility(View.VISIBLE);
-                counterTextView.setAlpha(1.0f);
-                updatePhotosCounter(false);
+                }*/
+                // counterTextView.setVisibility(View.VISIBLE);
+                // cameraPhotoRecyclerView.setVisibility(View.VISIBLE);
+                // counterTextView.setAlpha(1.0f);
+                 updatePhotosCounter(true);
             }
 
             @Override
@@ -2313,10 +2316,10 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         if (cameraPhotos.isEmpty()) {
             counterTextView.setVisibility(View.INVISIBLE);
             cameraPhotoRecyclerView.setVisibility(View.GONE);
-        } else {
+        }/* else {
             counterTextView.setVisibility(View.VISIBLE);
             cameraPhotoRecyclerView.setVisibility(View.VISIBLE);
-        }
+        }*/
         if (parentAlert.getCommentView().isKeyboardVisible() && isFocusable()) {
             parentAlert.getCommentView().closeKeyboard();
         }

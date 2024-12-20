@@ -8511,4 +8511,5 @@
     <string name="MoveCaptionDown">Move caption down</string>
     <string name="MovedCaptionDown">Caption moved down</string>
     <string name="MovedCaptionDownText">Caption will be shown below the media</string>
+    <string name="CameraHint3">Click or hold to take photo or video</string>
 </resources>

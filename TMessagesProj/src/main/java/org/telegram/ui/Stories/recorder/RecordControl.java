@@ -20,6 +20,8 @@ import android.graphics.Shader;
 import android.graphics.SurfaceTexture;
 import android.graphics.Xfermode;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.ShapeDrawable;
+import android.graphics.drawable.shapes.RectShape;
 import android.os.Build;
 import android.os.SystemClock;
 import android.util.Log;
@@ -184,6 +186,12 @@ public class RecordControl extends View implements FlashViews.Invertable {
     }
 
     public void updateGalleryImage() {
+        if (selectMore) {
+            ShapeDrawable shapeDrawable = new ShapeDrawable(new RectShape());
+            shapeDrawable.getPaint().setColor(0x00000000);
+            galleryImage.setImageBitmap(shapeDrawable);
+            return;
+        }
         final String filter = "80_80";
         ArrayList<StoryEntry> drafts = MessagesController.getInstance(galleryImage.getCurrentAccount()).getStoriesController().getDraftsController().drafts;
         galleryImage.setOrientation(0, 0, true);
@@ -749,7 +757,7 @@ public class RecordControl extends View implements FlashViews.Invertable {
             AndroidUtilities.cancelRunOnUIThread(onRecordLongPressRunnable);
             AndroidUtilities.cancelRunOnUIThread(onFlipLongPressRunnable);
 
-            if (!recording && lockButton.isPressed()) {
+            if (!recording && lockButton.isPressed() && !selectMore) {
                 delegate.onGalleryClick();
             } else if (recording && longpressRecording) {
                 if (lockButton.isPressed()) {
@@ -829,7 +837,18 @@ public class RecordControl extends View implements FlashViews.Invertable {
     }
 
     private boolean isFromCameraCell;
+    private boolean selectMore;
+
     public void setIsFromCameraCell(boolean isIt) {
         isFromCameraCell = isIt;
+    }
+
+    public void setSelectMore(boolean more) {
+        selectMore = more;
+    }
+
+    public void resetSelectAndFrom() {
+        isFromCameraCell = false;
+        selectMore = false;
     }
 }
